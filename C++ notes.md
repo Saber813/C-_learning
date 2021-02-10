@@ -40,6 +40,47 @@ ISO/IEC 14882:2020(E) **C++20** **2020年2月 final draft 2020年5月 ISO认证*
 
    所有的特殊迭代器都声明在<interator>之中, 如果使用的是普通迭代器: 如data.begin()则不需要
 
+3. 关于iostream 
+
+   理论上应该是iostream包含了istream和ostream。但是如果只想使用ostream中的某个功能却使用了这个iostream，而iostream比较大，又包含了istream，那么这样的调用会浪费资源
+
+4. string::
+
+   **size_type 类型:**
+
+   ```C++
+   int main()
+   {
+   string str("Hello World!\n");
+   cout << "The size of " << str << "is " << str.size()
+   << " characters, including the newline" << endl;
+   return 0;
+   }
+   ```
+
+   从逻辑上来讲，`size`() 成员函数似乎应该返回整形数值，或是无符号整数。但事实上，`size` 操作返回的是 `string::size_type` 类型的值。
+
+   它定义为与 `unsigned` 型（`unsigned int` 或 `unsigned long`）具有相同的含义，而且可以保证足够大能够存储任意 `string` 对象的长度
+
+   为了使用由 `string` 类型定义的 `size_type` 类型是由 `string` 类定义。任何存储string的size操作结果的变量必须为string::size_type 类型。**特别重要的是，还要把size的返回值赋给一个 `int` 变量。**
+
+   **为了避免溢出，保存一个 `stirng` 对象 `size` 的最安全的方法就是使用标准库类型 `string::size_type`**
+
+   **string::npos**
+
+   调用find() 未找到的标志
+
+   > find 为查找string 中的字符
+
+5. typedef
+
+   ```c++
+   typedef map<string,int> count_map;
+   typedef count_map::iterator count_iter;
+   ```
+
+   
+
 ### 2. 阅读C++代码
 
 1. **注释**
@@ -110,13 +151,30 @@ ISO/IEC 14882:2020(E) **C++20** **2020年2月 final draft 2020年5月 ISO认证*
 
 * **不要使用未初始化变量**
 
-### 5. 简单输入
+### 5. 输入
 
-#### **输出读入** :  
+#### **输入** :  
 
 * 标准输入是一串字符流, 字符来自缓冲区, **因此该程序始终保持在流的当前位置(无论你用了多少cin)**,下一个读操作始终从这个位置开始.
 * 开始的空白字符会被跳过
 * **读取字符,检查是否有效,无效则流不会移动**
+
+```
+#include<ios>
+std::noskipws 
+std::skipws 
+```
+
+* 粘滞操作符 控制是否读取空格
+
+**cin.get()** : 不对空白字符特殊处理
+
+```
+忽略输入行的其余部分
+while(std::cin.get(c)andC!='\n')
+```
+
+
 
 ### 8. 格式化输出
 
@@ -284,6 +342,19 @@ int main()
 
 ​	**insert成员函数将迭代器制定范围的值复制到向量中,这些值被插入到第一个参数(data.end) 之前**
 
+#### 输出函数
+
+```
+void read_data(vector::<int>& data){
+std::copy(istream_iterator<int>(cin),
+istream_iterator<int>(),
+back_inserter(data)
+);
+}
+```
+
+
+
 ### 10. 自增和自减
 
 ```c++
@@ -395,12 +466,6 @@ int main()
 
 ### 13. 文件I/O简介
 
-**<iostream>中规定了 cout **
-
-**<cstdio>中声明了perror 函数**
-
-**<istream> 与 <ostream> 分别规定了 >> 和 << 操作符**
-
 #### 读文件
 
 ```c++
@@ -470,19 +535,111 @@ int main()
 
 ```
 
-### 14. 数据结构 映射
+---
 
-### 15. 类型 同义词
+> **编写一个程序 读取单词 并计算单词的出现次数**
+
+
+
+### 14. 数据结构 映射(MAP) 字典(dictionary) 联合(association)
+
+
+
+**可以使用任意类型作为键和值的类型 甚至可以使用另一个映射 如果使用向量 没有初始化映射的时候 默认初始化为空值**
+
+* 使用方法: 包含头文件<map> 数据类型映射std:map 定义映射 std::map<string, int> count
+
+* **查询值**: count["the"] 返回键the 关联的值 : **映射中没有该键 则被添加到映射 初始值为零. 值的类型时std::string 则初始化为空字符串**
+
+* **遍历:** **映射的迭代器**
+
+  * 映射迭代器**的值**是一个 pair对象 , 它有两部分 first 和 second . (键 & 值)
+
+    > 映射迭代器两部分没有命名为key value ; 因为 pair 类型 是C++的通用部分 , 这个库在不同的地方使用 并没有绑定到映射
+
+  * 操作符* 解引用一个迭代器, 因此返回一个pair对象 . 使用" . "操作符访问pair的成员**(键或者值)**
+  * 但是 C++里面 点操作符比*有更高的优先级, 所以会将\*iter.first 当作 *(iter.first)理解 
+  * 因此 要使用**(*iter).first 或者 iter->first**
+
+  ```
+  for(map<string,int>::iterator iter(counts.begin());iter!= counts.end();++iter)
+  ```
+
+* **搜索映射**
+
+  **映射会按照键的次序存储数据,因此搜索映射非常的快(对数时间) 可以使用任意一种标准的二分搜索算法(lowerbound)**
+
+  **但更好的方法是使用映射的成员函数**,(也花费对数时间 但是开销小)
 
 ### 16. 字符
 
-### 17. 字符 分类
+#### 区域设置
 
-### 18. 大小写转换
+* **使用空字符串参数的区域设置通常称为本地区域设置**
 
-### 19. 编写函数
+  函数std::locale::classic() :返回经典区域设置:行为已知并且确定 
 
-### 20. 函数实参
+  std::locale("") : **从操作系统获得用户首选项 // 程序必须以固定形式读取数据 并且不想收到用户首选项的影响**
+
+* isalnum(在<locale>中声明) (判断这个字符在当前域内是不是字母数字)
+
+  **isalnum(*w,local(""))**
+
+* **想要改变流的locale**
+
+```
+cin::imbue(local::classic());
+cout::imbue(local::classic());
+```
+
+推荐是 采用一个共享区域设置对象(也就是 `local native("")`)
+
+* 判断大小写 以及传换大小写
+
+  **isupper/islower(char, local(""))**
+
+### 20. Const
+
+#### 传递引用
+
+如函数
+
+**理解应为: 一个int引用的形参(从右往左)**
+
+```
+void modify (int& x)
+{
+	x=10
+}
+```
+
+此时: main函数内使用这个的时候,不能直接传入数字,由于不能传递右值
+
+**形参为引用的时候, 函数调用中的实参一定为左值,如果形参是按值调用,那么可以传递右值**
+
+```
+int main(){
+	.....................
+	int a(0);
+	modify(a);// 可以
+	---
+	modify(0);//不行
+}
+```
+
+**但是部分情况下,可以把右值转换为左值**
+
+#### 常量引用
+
+void print_vector(vector<int> const & v ) 的理解为
+
+**他是一个引用,引用的是一个const对象, 而且对象类型为std::vector<int>** 
+
+这时候 你就可以传递右值了
+
+#### const_iterator
+
+**当使用const 形参是 使用的迭代器用const_iterator 取代 iterator,智能读值**
 
 ### 21. 使用算法
 
